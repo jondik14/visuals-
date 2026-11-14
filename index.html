@@ -2,12 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Decks Visuals">
 <title>Decks Night Visuals</title>
 <style>
 :root{--bg:#000;--ink:#f1f0ec;--muted:#9a99a6;--accent:#ff3d7f;--panel:rgba(16,16,22,.88);--line:#2c2c36}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
-canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+html,body{margin:0;height:100%;touch-action:manipulation;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+canvas{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block}
 #c{transform-origin:50% 50%;will-change:transform,filter}
 #fx{z-index:2;pointer-events:auto}
 #pad{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}#pad button{display:inline-block;width:auto;margin:0;padding:9px 12px;font-size:14px;border-radius:9px}
@@ -17,20 +22,21 @@ canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block}
 #pad button.on{border-color:var(--accent);color:var(--accent)}
 #lmh{display:flex;gap:4px;height:34px;align-items:flex-end;margin-top:8px}#lmh i{flex:1;background:#ff3d7f;border-radius:3px;height:0;transition:height .05s}#lmh i:nth-child(2){background:#ffb340}#lmh i:nth-child(3){background:#4ea1ff}.small2{font-size:11px;color:var(--muted);margin-top:2px}
 #meta{margin-top:4px;font-variant-numeric:tabular-nums}#beatdot{color:#444;transition:color .08s}
-#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(circle at 50% 40%,#1a0b16,#000 70%);z-index:5}
-.box{max-width:560px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px}
+#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;background:radial-gradient(circle at 50% 40%,#1a0b16,#000 70%);z-index:5}
+.box{margin:auto;max-width:560px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px}
 h1{margin:0 0 6px;font-size:30px;letter-spacing:-.02em}
 p{color:var(--muted);margin:6px 0 16px;line-height:1.5}
 button,label.btn{display:block;width:100%;text-align:left;font:inherit;font-size:15px;padding:14px 16px;margin:10px 0;border-radius:12px;border:1px solid var(--line);background:#16161c;color:var(--ink);cursor:pointer;box-sizing:border-box}
 button:hover,label.btn:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);color:#0c0c10;border-color:var(--accent);font-weight:700}
 small{display:block;color:var(--muted);font-size:12px;margin-top:3px;font-weight:400}
-#hud{position:fixed;left:16px;bottom:16px;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;max-width:calc(100vw - 64px);transition:opacity .6s}
+#hud{position:fixed;left:max(16px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom));z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;max-width:calc(100vw - 64px);transition:opacity .6s}
 #hud.hide{opacity:0;pointer-events:none}
 #name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #keys{color:var(--muted);margin-top:4px}
 #level{height:4px;background:#222;border-radius:3px;margin-top:8px;overflow:hidden}#level i{display:block;height:100%;width:0;background:var(--accent)}
 #err{color:#ff8080;font-size:13px;min-height:18px}
+#touchhelp{display:none}.touch #touchhelp{display:block}.touch #keyhelp{display:none}
 kbd{border:1px solid #444;border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:12px}
 </style>
 </head>
@@ -44,7 +50,8 @@ kbd{border:1px solid #444;border-bottom-width:2px;border-radius:4px;padding:0 5p
   <label class="btn" for="file">🎵 Play an audio file<small>Test it with one of the practice-pack tracks.</small></label>
   <input type="file" id="file" accept="audio/*" hidden>
   <div id="err"></div>
-  <p style="margin:12px 0 0;font-size:13px">Then press <kbd>F</kbd> for fullscreen. <kbd>Space</kbd> next look · <kbd>K</kbd> kick FX strength · <kbd>S</kbd> strobe (off by default) · <kbd>L</kbd> keep a look as a favourite · <kbd>M</kbd> favourites only · <kbd>V</kbd> voice commands · <kbd>B</kbd> never show this look again · <kbd>Q</kbd> quality · <kbd>D</kbd> fire a drop · <kbd>[</kbd> <kbd>]</kbd> sync timing · <kbd>A</kbd> auto-change · <kbd>↑</kbd><kbd>↓</kbd> sensitivity · <kbd>H</kbd> hide info</p>
+  <p id="keyhelp" style="margin:12px 0 0;font-size:13px">Then press <kbd>F</kbd> for fullscreen. <kbd>Space</kbd> next look · <kbd>K</kbd> kick FX strength · <kbd>S</kbd> strobe (off by default) · <kbd>L</kbd> keep a look as a favourite · <kbd>M</kbd> favourites only · <kbd>V</kbd> voice commands · <kbd>B</kbd> never show this look again · <kbd>Q</kbd> quality · <kbd>D</kbd> fire a drop · <kbd>[</kbd> <kbd>]</kbd> sync timing · <kbd>A</kbd> auto-change · <kbd>↑</kbd><kbd>↓</kbd> sensitivity · <kbd>H</kbd> hide info</p>
+  <p id="touchhelp" style="margin:12px 0 0;font-size:13px">Tap the visuals to show or hide the controls. For full screen on iPhone: Share → Add to Home Screen, then open it from there.</p>
 </div></div>
 <canvas id="fx"></canvas>
 <div id="toast"></div>
@@ -65,10 +72,10 @@ const PR=(window.butterchurnPresets&&(butterchurnPresets.default||butterchurnPre
 const canvas=document.getElementById('c'),fx=document.getElementById('fx'),fxc=fx.getContext('2d'),hud=document.getElementById('hud'),err=document.getElementById('err');
 const $=id=>document.getElementById(id);
 const touch=matchMedia('(pointer:coarse)').matches;
-let ctx,viz,inGain,agc,analyser,presets,names,idx=0,auto=true,hudTimer,hudHidden=false;
+let ctx,viz,inGain,agc,analyser,presets,names,idx=0,auto=true,hudTimer,hudHidden=false,hudHover=false;
 let kickLvl=2,strobe=false;
 const QUAL=[{n:'fast',dpr:1,tex:1,mw:48,mh:36,aa:false},{n:'high',dpr:2,tex:1,mw:64,mh:48,aa:true},{n:'ultra',dpr:2,tex:2,mw:96,mh:72,aa:true}];
-let qi=1;
+let qi=touch?0:1; // phones start on 'fast' for a smooth frame rate (tap Quality to raise it)
 function size(){const q=QUAL[qi],dpr=Math.min(window.devicePixelRatio||1,q.dpr);const w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);canvas.width=w;canvas.height=h;fx.width=w;fx.height=h;if(viz){viz.setRendererSize(w,h,{meshWidth:q.mw,meshHeight:q.mh,textureRatio:q.tex});viz.setOutputAA(q.aa)}}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 let favs=[],allNames=[],favsOnly=false,prevName=null,switchedAt=0,toastT;
@@ -140,8 +147,10 @@ function toggleVoice(){const SR=window.SpeechRecognition||window.webkitSpeechRec
   rec.onend=()=>{if(voiceOn)setTimeout(()=>{try{rec.start()}catch(e){}},250)};
   rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){voiceOn=false;$('voicebtn').classList.remove('on');toast('Voice blocked — allow the mic')}};
   try{rec.start();voiceOn=true;$('voicebtn').classList.add('on');toast('🎙 Listening — "keep that one", "that\'s sick", "more colour"…')}catch(e){toast('Voice failed to start')}}
-function flashHud(){if(hudHidden)return;if(touch&&!hud.classList.contains('hide'))return;hud.classList.remove('hide');clearTimeout(hudTimer);hudTimer=setTimeout(()=>hud.classList.add('hide'),3500)}
-function init(){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();
+function flashHud(){if(hudHidden)return;if(touch&&!hud.classList.contains('hide'))return;hud.classList.remove('hide');clearTimeout(hudTimer);if(!hudHover)hudTimer=setTimeout(()=>{if(!hudHover)hud.classList.add('hide')},3500)}
+function unlockAudio(){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state!=='running'){try{const p=ctx.resume();p&&p.catch&&p.catch(()=>{})}catch(e){}}} // iPhones only start audio from inside a tap
+let wake=null;async function keepAwake(){if(!('wakeLock' in navigator)||wake||document.visibilityState!=='visible')return;try{wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>{wake=null})}catch(e){}} // keep the screen from sleeping mid-set
+function init(){unlockAudio();
   if(!BC||!PR){err.textContent='Visual engine failed to load.';return false}
   inGain=ctx.createGain();agc=ctx.createGain();agc.gain.value=4;
   analyser=ctx.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=0;
@@ -150,7 +159,7 @@ function init(){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
   presets={};for(const g of ['butterchurnPresets','butterchurnPresetsExtra','butterchurnPresetsExtra2','butterchurnPresetsMD1']){const m=window[g];if(m)try{Object.assign(presets,(m.default||m).getPresets())}catch(e){}}
   let bin=[];try{bin=JSON.parse(localStorage.getItem('vizBin')||'[]')}catch(e){}
   allNames=shuffle(Object.keys(presets).filter(n=>!bin.includes(n)));names=allNames.slice();load(0,0);
-  $('start').style.display='none';requestAnimationFrame(loop);return true}
+  $('start').style.display='none';keepAwake();requestAnimationFrame(loop);return true}
 
 // ---- analysis state ----
 const freq=new Float32Array(512),td=new Float32Array(1024);
@@ -274,10 +283,13 @@ let fr=0,fT=0;function loop(){const now=performance.now();fr++;if(now-fT>1000){$
 
 async function useStream(s){if(!s.getAudioTracks().length){err.textContent='No audio in that share. Tick "share audio" and try again.';return}
   if(!init())return;ctx.createMediaStreamSource(s).connect(inGain)}
-$('mic').onclick=async()=>{if(!touch)setTimeout(()=>{if(!voiceOn)toggleVoice()},50);try{const s=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});useStream(s)}catch(e){err.textContent='Microphone blocked: allow it in the browser address bar and try again. ('+e.name+')'}};
-$('sys').onclick=async()=>{try{const s=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});s.getVideoTracks().forEach(t=>t.stop());useStream(s)}catch(e){err.textContent='Capture cancelled or not supported here. ('+e.name+')'}};
-$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!init())return;const a=new Audio(URL.createObjectURL(f));a.loop=true;const src=ctx.createMediaElementSource(a);src.connect(inGain);src.connect(ctx.destination);a.play()};
+$('mic').onclick=async()=>{unlockAudio();if(!touch)setTimeout(()=>{if(!voiceOn)toggleVoice()},50);try{const s=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});useStream(s)}catch(e){err.textContent='Microphone blocked: allow it in the browser address bar and try again. ('+e.name+')'}};
+$('sys').onclick=async()=>{unlockAudio();try{const s=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});s.getVideoTracks().forEach(t=>t.stop());useStream(s)}catch(e){err.textContent='Capture cancelled or not supported here. ('+e.name+')'}};
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!init())return;const a=new Audio(URL.createObjectURL(f));a.loop=true;const src=ctx.createMediaElementSource(a);src.connect(inGain);src.connect(ctx.destination);a.play().catch(()=>{toast('Tap the screen to start the music');addEventListener('pointerdown',()=>{unlockAudio();a.play()},{once:true})})};
+$('file').addEventListener('click',unlockAudio);
 addEventListener('resize',size);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&viz){keepAwake();unlockAudio()}});
+addEventListener('pointerdown',()=>{if(ctx&&ctx.state!=='running')unlockAudio()}); // phones pause audio after calls / app switches
 addEventListener('keydown',e=>{if(!viz)return;const k=e.key.toLowerCase();
   if(k===' '||k==='arrowright'){skipLook();e.preventDefault()}
   else if(k==='arrowleft')load(idx-1);
@@ -298,13 +310,16 @@ addEventListener('keydown',e=>{if(!viz)return;const k=e.key.toLowerCase();
   else if(k==='arrowup'||k==='arrowdown'){inGain.gain.value=Math.max(.2,Math.min(8,inGain.gain.value*(k==='arrowup'?1.25:.8)));$('gainv').textContent=inGain.gain.value.toFixed(1);flashHud();e.preventDefault()}
   else if(k==='f'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{})}
   else if(k==='h'){hudHidden=!hudHidden;hud.classList.toggle('hide',hudHidden);if(!hudHidden)flashHud()}});
-if(touch)document.body.classList.add('touch');
+if(touch)document.body.classList.add('touch');$('qv').textContent=QUAL[qi].n;
 if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia)$('sys').style.display='none';
 if(!document.documentElement.requestFullscreen)$('fsbtn').style.display='none';
 document.querySelectorAll('#pad button').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();window.dispatchEvent(new KeyboardEvent('keydown',{key:b.dataset.k}));if(touch){hud.classList.remove('hide');clearTimeout(hudTimer)}}));
 function tapCanvas(){if(!viz)return;if(touch){const show=hud.classList.contains('hide');hud.classList.toggle('hide',!show);clearTimeout(hudTimer);hudHidden=!show}else skipLook()}
 canvas.addEventListener('click',tapCanvas);fx.addEventListener('click',tapCanvas);
-addEventListener('mousemove',()=>{if(viz&&!touch)flashHud()});
+function nearHud(x,y){const r=hud.getBoundingClientRect(),m=40;return x>=r.left-m&&x<=r.right+m&&y>=r.top-m&&y<=r.bottom+m}
+function setHover(on){if(on===hudHover)return;hudHover=on;clearTimeout(hudTimer);if(on)hud.classList.remove('hide');else hudTimer=setTimeout(()=>{if(!hudHover)hud.classList.add('hide')},400)}
+addEventListener('mousemove',e=>{if(viz&&!touch&&!hudHidden)setHover(nearHud(e.clientX,e.clientY))});
+document.documentElement.addEventListener('mouseleave',()=>{if(!touch)setHover(false)});
 </script>
 </body>
 </html>
