@@ -46,7 +46,7 @@ kbd{border:1px solid #444;border-bottom-width:2px;border-radius:4px;padding:0 5p
   <h1>Decks Night Visuals</h1>
   <p>Visuals that move to the music, for the projector. Pick how this laptop should hear the music:</p>
   <button class="primary" id="mic">🎤 Microphone<small>Easiest. Point the laptop at the speakers. Works on any laptop.</small></button>
-  <button id="sys">🖥 Capture system / tab audio<small>Use this on the laptop running rekordbox (Windows Chrome: tick "Share system audio").</small></button>
+  <button id="sys">🎧 Spotify / browser tab audio<small id="syshint">Most accurate. Play the music in a Chrome or Edge <b>tab</b> (e.g. open.spotify.com), pick that tab and turn on "Also share tab audio". App windows can't share sound. On Windows, "Entire screen" + "Share system audio" works with any app (Spotify app, rekordbox).</small></button>
   <label class="btn" for="file">🎵 Play an audio file<small>Test it with one of the practice-pack tracks.</small></label>
   <input type="file" id="file" accept="audio/*" hidden>
   <div id="err"></div>
@@ -287,10 +287,10 @@ function drawFx(){
 }
 let fr=0,fT=0;function loop(){const now=performance.now();fr++;if(now-fT>1000){$('fps')&&($('fps').textContent=fr+' fps');fr=0;fT=now}analyse(now);viz.render();drawFx();requestAnimationFrame(loop)}
 
-async function useStream(s){if(!s.getAudioTracks().length){err.textContent='No audio in that share. Tick "share audio" and try again.';return}
+async function useStream(s){if(!s.getAudioTracks().length){err.textContent='No sound came through. App windows (like the Spotify app) can\'t share audio: play the music in a Chrome tab (open.spotify.com), pick that tab and turn on "Also share tab audio". On Windows you can also pick "Entire screen" + "Share system audio".';return}
   if(!init())return;ctx.createMediaStreamSource(s).connect(inGain)}
 $('mic').onclick=async()=>{unlockAudio();if(!touch)setTimeout(()=>{if(!voiceOn)toggleVoice()},50);try{const s=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});useStream(s)}catch(e){err.textContent='Microphone blocked: allow it in the browser address bar and try again. ('+e.name+')'}};
-$('sys').onclick=async()=>{unlockAudio();try{const s=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});s.getVideoTracks().forEach(t=>t.stop());useStream(s)}catch(e){err.textContent='Capture cancelled or not supported here. ('+e.name+')'}};
+$('sys').onclick=async()=>{unlockAudio();err.textContent='';try{const s=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'browser'},audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,suppressLocalAudioPlayback:false},systemAudio:'include',selfBrowserSurface:'exclude'}); /* picker opens on the Tabs list, hides this tab, music stays audible */s.getVideoTracks().forEach(t=>t.stop());useStream(s)}catch(e){err.textContent=e.name==='NotAllowedError'?'Sharing was cancelled or blocked.':'Couldn\'t start sharing ('+e.name+'). Use Chrome or Edge on a computer; on a Mac, sharing a whole screen or window also needs Screen Recording permission (System Settings → Privacy & Security).'}};
 $('file').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!init())return;const a=new Audio(URL.createObjectURL(f));a.loop=true;const src=ctx.createMediaElementSource(a);src.connect(inGain);src.connect(ctx.destination);a.play().catch(()=>{toast('Tap the screen to start the music');addEventListener('pointerdown',()=>{unlockAudio();a.play()},{once:true})})};
 $('file').addEventListener('click',unlockAudio);
 addEventListener('resize',size);
@@ -318,6 +318,7 @@ addEventListener('keydown',e=>{if(!viz)return;const k=e.key.toLowerCase();
   else if(k==='h'){hudHidden=!hudHidden;hud.classList.toggle('hide',hudHidden);if(!hudHidden)flashHud()}});
 if(touch)document.body.classList.add('touch');$('qv').textContent=QUAL[qi].n;
 if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia)$('sys').style.display='none';
+else if(!navigator.userAgentData)$('syshint').textContent='Needs Chrome or Edge: this browser can\'t share tab or system sound.'; // Safari / Firefox share video only
 if(!document.documentElement.requestFullscreen)$('fsbtn').style.display='none';
 document.querySelectorAll('#pad button').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();window.dispatchEvent(new KeyboardEvent('keydown',{key:b.dataset.k}));if(touch){hud.classList.remove('hide');clearTimeout(hudTimer)}}));
 function tapCanvas(){if(!viz)return;if(touch){const show=hud.classList.contains('hide');hud.classList.toggle('hide',!show);clearTimeout(hudTimer);hudHidden=!show}else skipLook()}
