@@ -1,0 +1,27 @@
+name: Mac app
+
+on:
+  push:
+    branches: [main]
+    paths: ['mac/**', 'index.html', 'relay.html', '.github/workflows/mac-app.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Decks Visuals.app
+        run: bash mac/build.sh
+      - name: Publish the download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete mac-latest --yes --cleanup-tag || true
+          gh release create mac-latest build/DecksVisuals-mac.zip \
+            --title "Decks Visuals for Mac (latest)" \
+            --notes "Download DecksVisuals-mac.zip, unzip it and move Decks Visuals to Applications. First launch: if macOS blocks it, open System Settings → Privacy & Security and click Open Anyway." \
+            --target "$GITHUB_SHA"

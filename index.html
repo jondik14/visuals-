@@ -66,6 +66,7 @@ kbd{border:1px solid #444;border-bottom-width:2px;border-radius:4px;padding:0 5p
 <div id="start"><div class="box">
   <h1>Decks Night Visuals</h1>
   <p>Visuals that move to the music, for the projector. Pick how this laptop should hear the music:</p>
+  <button class="primary" id="nat" style="display:none">🖥 This Mac's sound<small>Listens to everything playing on this Mac: YouTube, Spotify, rekordbox. No mic, no sharing bar.</small></button>
   <button class="primary" id="mic">🎤 Microphone<small>Easiest. Point the laptop at the speakers. Works on any laptop.</small></button>
   <select id="indev" aria-label="Which microphone or audio input"></select>
   <button id="yt">📺 YouTube / Spotify tab, clean full screen<small>Opens a helper tab that shares the music tab, so this tab shows no "sharing" bar. Chrome or Edge.</small></button>
@@ -389,6 +390,18 @@ $('yt').onclick=()=>{unlockAudio();err.textContent='';
   relayWin=window.open('relay.html?sr='+ctx.sampleRate,'decksRelay'); // a normal tab, so Chrome's sharing bar stays in that tab
   if(!relayWin)err.textContent='Your browser blocked the helper window. Allow pop-ups for this site (icon at the right of the address bar) and try again.';
   else err.textContent='In the helper tab, click "Share the music tab", then come back to this tab.'};
+// ---- inside the Mac app: the app captures the Mac's sound and streams it in ----
+const NATIVE=!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.decks);
+let nativeNode=null,nativePort=null;
+if(NATIVE){$('nat').style.display='block';$('yt').style.display='none';$('sys').style.display='none';$('mic').classList.remove('primary')}
+window.__decksPCM=b64=>{if(!nativePort)return;const s=atob(b64),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);const f=new Float32Array(u.buffer);nativePort.postMessage(f,[f.buffer])};
+window.__decksNativeError=m=>{err.textContent=m;if(viz)toast('⚠️ '+m.split('.')[0])};
+window.__decksNativeReady=async()=>{try{if(!viz&&!init())return;
+    if(!relayLoaded){await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([RELAY_IN],{type:'text/javascript'})));relayLoaded=true}
+    if(nativeNode)nativeNode.disconnect();nativeNode=new AudioWorkletNode(ctx,'relay-in',{numberOfInputs:0,outputChannelCount:[1]});nativeNode.connect(inGain);
+    const ch=new MessageChannel();nativeNode.port.postMessage({port:ch.port1},[ch.port1]);nativePort=ch.port2;unlockAudio();err.textContent='';toast('🖥 Listening to this Mac. Press F for full screen')}
+  catch(x){err.textContent='Couldn\'t start ('+x.name+')'}};
+$('nat').onclick=()=>{unlockAudio();err.textContent='Asking macOS for permission…';window.webkit.messageHandlers.decks.postMessage({cmd:'startAudio'})};
 addEventListener('message',async e=>{if(e.origin!==location.origin||!e.data||e.data.type!=='relay-ready'||!relayWin||e.source!==relayWin)return;
   try{if(!viz&&!init())return;
     if(!relayLoaded){await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([RELAY_IN],{type:'text/javascript'})));relayLoaded=true}
