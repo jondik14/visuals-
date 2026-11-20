@@ -88,8 +88,8 @@ kbd{border:1px solid #444;border-bottom-width:2px;border-radius:4px;padding:0 5p
   <div class="stbtns"><input type="text" id="stname" placeholder="Name this look" maxlength="40" aria-label="Look name"><button id="stsave">Save</button><button id="stdel">Delete</button></div>
   <div class="stbtns"><button id="stmut">🎲 Surprise me</button><button id="stundo">↩ Undo</button><button id="stevo">Evolve: off</button></div>
   <div class="stbtns"><button id="stexp">Export</button><label class="btn" for="stimp">Import</label><input type="file" id="stimp" accept=".json,application/json" hidden></div>
-  <div class="stsec">Your drawing</div>
-  <div class="stbtns"><label class="btn" for="stimg">🖼 Add a drawing or photo</label><input type="file" id="stimg" accept="image/*" hidden><canvas id="stthumb" width="88" height="88"></canvas><button id="strm">Remove</button></div>
+  <div class="stsec">Your drawing or clip</div>
+  <div class="stbtns"><label class="btn" for="stimg">🖼 Add a drawing, photo or video clip</label><input type="file" id="stimg" accept="image/*,video/*" hidden><canvas id="stthumb" width="88" height="88"></canvas><button id="strm">Remove</button></div>
   <div class="strow3">
     <select id="stmode" aria-label="How the drawing is used"><option value="top">On top</option><option value="stencil">Stencil</option><option value="bend">Bend</option></select>
     <select id="stkey" aria-label="Background removal"><option value="auto">Auto cut-out</option><option value="paper">Remove paper</option><option value="black">Remove black</option><option value="none">Keep as is</option></select>
@@ -384,12 +384,12 @@ const FX={kaleido:'Kaleidoscope',zoom:'Tunnel',spin:'Twist',warp:'Melt',trails:'
 const clone=o=>JSON.parse(JSON.stringify(o)),clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 const blank=()=>({v:1,name:'New look',level:1,preset:null,segs:6,
   fx:Object.fromEntries(Object.keys(FX).map(k=>[k,{b:k==='dsize'?.5:k==='dglow'?.8:0,s:'none',a:0}])),
-  draw:{img:null,mode:'top',key:'auto',tint:'own'}});
+  draw:{img:null,kind:'image',mode:'top',key:'auto',tint:'own'}});
 function norm(l){const o=blank();if(!l||typeof l!=='object')return o;
   if(typeof l.name==='string')o.name=l.name.slice(0,40);if(typeof l.level==='number')o.level=clamp(l.level);
   if(typeof l.preset==='string')o.preset=l.preset;if(l.segs>=2&&l.segs<=16)o.segs=Math.round(l.segs);
   for(const k in o.fx){const f=l.fx&&l.fx[k];if(f){if(typeof f.b==='number')o.fx[k].b=clamp(f.b);if(typeof f.a==='number')o.fx[k].a=clamp(f.a);if(f.s in SRC)o.fx[k].s=f.s}}
-  if(l.draw){if(typeof l.draw.img==='string')o.draw.img=l.draw.img;if(['top','stencil','bend'].includes(l.draw.mode))o.draw.mode=l.draw.mode;
+  if(l.draw){if(typeof l.draw.img==='string')o.draw.img=l.draw.img;if(l.draw.kind==='video')o.draw.kind='video';if(['top','stencil','bend'].includes(l.draw.mode))o.draw.mode=l.draw.mode;
     if(['auto','paper','black','none'].includes(l.draw.key))o.draw.key=l.draw.key;if(['own','cycle'].includes(l.draw.tint))o.draw.tint=l.draw.tint}
   return o}
 const mk=(name,o)=>{const l=blank();l.name=name;for(const k in o.fx||{})Object.assign(l.fx[k],o.fx[k]);if(o.segs)l.segs=o.segs;if(o.level!=null)l.level=o.level;return l};
@@ -436,13 +436,13 @@ mat2 r2(float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c);}
 vec3 hueRot(vec3 c,float a){const vec3 k=vec3(.57735);float ca=cos(a),sa=sin(a);return c*ca+cross(k,c)*sa+k*dot(k,c)*(1.-ca);}
 `;
 const FA=COMMON+`uniform sampler2D uBase,uPrev,uDraw;
-uniform float uAsp,uT,uK,uKal,uSegs,uZoom,uSpin,uWarp,uTrails,uLevel,uDOn,uDMode,uDSize,uDGlow,uDAsp;
+uniform float uAsp,uT,uK,uKal,uSegs,uZoom,uSpin,uWarp,uTrails,uLevel,uDOn,uDMode,uDSize,uDGlow,uDAsp,uVKey;
 uniform vec2 uXf;uniform vec4 uCol;uniform vec3 uTint;
 vec2 wf(vec2 u){float t=uT;return vec2(sin(u.y*7.+t*1.3)+sin(u.y*13.-t*.7+u.x*5.),cos(u.x*6.-t*1.1)+cos(u.x*11.+t*.9+u.y*4.))*.5;}
 vec3 baseAt(vec2 u){vec2 p=u-.5;p.x*=uAsp;p=r2(uXf.y)*p/uXf.x;p.x/=uAsp;vec3 c=texture(uBase,p+.5).rgb;
   c=hueRot(c,uCol.x);float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,uCol.y)*uCol.z;c=(c-.5)*uCol.w+.5;return clamp(c,0.,1.)*uLevel;}
 vec4 drawAt(vec2 u){vec2 p=u-.5;p.x*=uAsp;float s=uDSize*min(uAsp,1.);vec2 e=uDAsp>=1.?vec2(s,s/uDAsp):vec2(s*uDAsp,s);vec2 q=p/e+.5;
-  vec4 t=texture(uDraw,q);float i=step(0.,q.x)*step(q.x,1.)*step(0.,q.y)*step(q.y,1.);return vec4(t.rgb*uTint,t.a*i);}
+  vec4 t=texture(uDraw,q);if(uVKey>.5){float m=uVKey<1.5?max(t.r,max(t.g,t.b)):1.-min(t.r,min(t.g,t.b));t.a=smoothstep(.06,.32,m);}float i=step(0.,q.x)*step(q.x,1.)*step(0.,q.y)*step(q.y,1.);return vec4(t.rgb*uTint,t.a*i);}
 vec3 scene(vec2 u){
   if(uDOn<.5)return baseAt(u);
   vec4 d=drawAt(u);float a=d.a*min(1.,uDGlow*1.25);
@@ -492,13 +492,14 @@ function draw(now){
   if(cur.level>.004)gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,canvas);   // this frame of the MilkDrop look
   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,src.t);
   gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,texDraw);
+  if(videoEl&&videoEl.readyState>=2)gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,videoEl);   // current frame of the video clip
   gl.uniform1i(A.uBase,0);gl.uniform1i(A.uPrev,1);gl.uniform1i(A.uDraw,2);
   gl.uniform1f(A.uAsp,W/H);gl.uniform1f(A.uT,(now/1000)%10000);gl.uniform1f(A.uK,dtk);
   gl.uniform1f(A.uKal,val('kaleido'));gl.uniform1f(A.uSegs,cur.segs);gl.uniform1f(A.uZoom,val('zoom'));gl.uniform1f(A.uSpin,val('spin')*rotDir);
   gl.uniform1f(A.uWarp,val('warp'));gl.uniform1f(A.uTrails,val('trails'));gl.uniform1f(A.uLevel,cur.level);
   gl.uniform2f(A.uXf,FXS.scale,FXS.rot*Math.PI/180);gl.uniform4f(A.uCol,FXS.hue*Math.PI/180,FXS.sat,FXS.bright,FXS.con);
   const d=cur.draw;gl.uniform1f(A.uDOn,hasDraw?1:0);gl.uniform1f(A.uDMode,d.mode==='stencil'?1:d.mode==='bend'?2:0);
-  gl.uniform1f(A.uDSize,.15+val('dsize')*1.45);gl.uniform1f(A.uDGlow,val('dglow'));gl.uniform1f(A.uDAsp,drawAspect);
+  gl.uniform1f(A.uDSize,.15+val('dsize')*1.45);gl.uniform1f(A.uDGlow,val('dglow'));gl.uniform1f(A.uDAsp,drawAspect);gl.uniform1f(A.uVKey,videoEl?(d.key==='none'?0:d.key==='paper'?2:1):0);
   const t=d.tint==='cycle'?hsv(((hue/360)%1+1)%1):[1,1,1];gl.uniform3f(A.uTint,t[0],t[1],t[2]);
   gl.bindFramebuffer(gl.FRAMEBUFFER,dst.f);gl.drawArrays(gl.TRIANGLES,0,3);
   gl.useProgram(progP);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,dst.t);
@@ -519,7 +520,15 @@ function set(v){
 function toggle(){if(!viz)return;shown=!shown;$('studio').classList.toggle('hide',!shown);document.body.classList.toggle('stopen',shown);if(shown&&!touched){touched=true;set(true)}if(shown)ui()}
 
 // ---------- drawings ----------
-const imgCache={};let idb=null,idbWarned=false;
+const imgCache={};let idb=null,idbWarned=false,videoEl=null;
+// video clips (e.g. AI-generated loops) use the same slot as drawings; dark areas let the visuals show through
+function stopVideo(){if(videoEl){videoEl.pause();URL.revokeObjectURL(videoEl.src);videoEl=null}}
+function setVideo(blob){return new Promise((res,rej)=>{stopVideo();const v=document.createElement('video');v.muted=true;v.loop=true;v.playsInline=true;v.src=URL.createObjectURL(blob);
+  v.onloadeddata=()=>{videoEl=v;drawCanvas=null;drawAspect=v.videoWidth/v.videoHeight||1;hasDraw=true;v.play().catch(()=>{});thumb();res()};
+  v.onerror=()=>{URL.revokeObjectURL(v.src);rej(new Error('video'))};v.load()})}
+async function addVideo(f){if(f.size>150e6){toast('That clip is too big — keep it under 150 MB');return}
+  const id=newId();await putImg(id,f);cur.draw.img=id;cur.draw.kind='video';
+  try{await setVideo(f);set(true);toast('Clip added — its dark areas show the visuals through')}catch(e){cur.draw.img=null;hasDraw=false;toast('Couldn\'t play that clip — try an MP4')}}
 function db(){return idb||(idb=new Promise((res,rej)=>{const r=indexedDB.open('decksStudio',1);r.onupgradeneeded=()=>r.result.createObjectStore('img');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
 async function putImg(id,data){imgCache[id]=data;try{const d=await db();await new Promise((res,rej)=>{const t=d.transaction('img','readwrite');t.objectStore('img').put(data,id);t.oncomplete=res;t.onerror=()=>rej(t.error)})}
   catch(e){if(!idbWarned){idbWarned=true;toast('This browser won\'t save drawings — export the look to keep it')}}}
@@ -544,16 +553,16 @@ async function setDrawing(data){const im=await loadImg(data),c=document.createEl
       let a=clamp((1-Math.min(1,mn/pw)-.16)/.34);a=a*a*(3-2*a);const t=mx>mn?clamp(((mx-mn)/255-.2)/.25):0;   // coloured ink keeps its colour, dark ink turns white
       d[i]=255*(1-t)+t*255*(r-mn)/(mx-mn||1);d[i+1]=255*(1-t)+t*255*(g-mn)/(mx-mn||1);d[i+2]=255*(1-t)+t*255*(b-mn)/(mx-mn||1);d[i+3]=a*d[i+3]}}
   else if(key==='black'){for(let i=0;i<d.length;i+=4){const a=clamp((Math.max(d[i],d[i+1],d[i+2])/255-.06)/.26);d[i+3]=a*d[i+3]}}
-  x.putImageData(id,0,0);drawCanvas=c;drawAspect=w/h;hasDraw=true;uploadDraw();thumb();return key}
-function clearDrawing(){hasDraw=false;drawCanvas=null;cur.draw.img=null;thumb()}
-function thumb(){const t=$('stthumb');t.style.display=hasDraw&&drawCanvas?'block':'none';if(!hasDraw||!drawCanvas)return;
-  const x=t.getContext('2d'),s=Math.min(t.width/drawCanvas.width,t.height/drawCanvas.height);x.clearRect(0,0,t.width,t.height);
-  x.drawImage(drawCanvas,(t.width-drawCanvas.width*s)/2,(t.height-drawCanvas.height*s)/2,drawCanvas.width*s,drawCanvas.height*s)}
+  x.putImageData(id,0,0);stopVideo();drawCanvas=c;drawAspect=w/h;hasDraw=true;uploadDraw();thumb();return key}
+function clearDrawing(){stopVideo();hasDraw=false;drawCanvas=null;cur.draw.img=null;thumb()}
+function thumb(){const t=$('stthumb'),src=videoEl||drawCanvas;t.style.display=hasDraw&&src?'block':'none';if(!hasDraw||!src)return;
+  const w=src.videoWidth||src.width,h=src.videoHeight||src.height,x=t.getContext('2d'),k=Math.min(t.width/w,t.height/h);x.clearRect(0,0,t.width,t.height);
+  x.drawImage(src,(t.width-w*k)/2,(t.height-h*k)/2,w*k,h*k)}
 
 // ---------- looks: load, save, mutate ----------
-async function apply(l){const tok=++applyTok;cur=norm(clone(l));hasDraw=false;drawCanvas=null;undo=[];ui();
+async function apply(l){const tok=++applyTok;cur=norm(clone(l));stopVideo();hasDraw=false;drawCanvas=null;undo=[];ui();
   if(cur.draw.img){const d=await getImg(cur.draw.img);if(tok!==applyTok)return;
-    if(d){try{await setDrawing(d)}catch(e){}}else{cur.draw.img=null;toast('That look\'s drawing isn\'t saved on this device')}}
+    if(d){try{await(d instanceof Blob?setVideo(d):setDrawing(d))}catch(e){}}else{cur.draw.img=null;toast('That look\'s drawing isn\'t saved on this device')}}
   if(tok!==applyTok)return;
   if(cur.preset&&viz){const i=names.indexOf(cur.preset);if(i>=0){auto=false;$('auto').textContent='off';if(i!==idx)load(i,1.5)}}
   ui()}
@@ -578,7 +587,7 @@ function adj(k,d){pushUndo();const f=cur.fx[k];if(d===0){f.b=0;f.a=0}else if(d>0
 function react(d){if(!on)return;
   if(d>0){if(evolve){const sig=JSON.stringify(cur.fx);if(sig!==lastSig){const n=quickSave();toast('👍 Saved as "'+n+'"')}}}
   else if(undo.length)undoIt();else if(evolve)mutate(.6)}
-async function exportLook(){const l=clone(cur);if(l.draw.img)l.imgData=await getImg(l.draw.img);
+async function exportLook(){const l=clone(cur);if(l.draw.img){const d=await getImg(l.draw.img);if(typeof d==='string')l.imgData=d;else toast('Video clips aren\'t included in exported looks')}
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({decksStudioLook:1,look:l})],{type:'application/json'}));
   a.download=((cur.name||'look').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'look')+'.look.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
 async function importLook(file){try{const j=JSON.parse(await file.text()),raw=j.look||j,l=norm(raw);
@@ -623,9 +632,10 @@ function build(){
     else if(t.id==='stsegs')cur.segs=+t.value;
     else if(t.id==='stmode')cur.draw.mode=t.value;
     else if(t.id==='sttint')cur.draw.tint=t.value;
-    else if(t.id==='stkey'){cur.draw.key=t.value;if(cur.draw.img)getImg(cur.draw.img).then(d=>d&&setDrawing(d))}
+    else if(t.id==='stkey'){cur.draw.key=t.value;if(cur.draw.img)getImg(cur.draw.img).then(d=>d&&!(d instanceof Blob)&&setDrawing(d))}
     else if(t.id==='stpin')cur.preset=t.checked?names[idx]||null:null;
-    else if(t.id==='stimg'&&t.files[0]){const f=t.files[0];t.value='';readImage(f).then(async d=>{const id=newId();await putImg(id,d);cur.draw.img=id;const key=await setDrawing(d);set(true);
+    else if(t.id==='stimg'&&t.files[0]&&t.files[0].type.startsWith('video/')){const f=t.files[0];t.value='';addVideo(f)}
+    else if(t.id==='stimg'&&t.files[0]){const f=t.files[0];t.value='';readImage(f).then(async d=>{cur.draw.kind='image';const id=newId();await putImg(id,d);cur.draw.img=id;const key=await setDrawing(d);set(true);
         toast(key==='paper'?'Drawing added — paper removed':key==='black'?'Drawing added — black background removed':'Picture added')}).catch(()=>toast('Couldn\'t read that picture — try a JPG or PNG'))}
     else if(t.id==='stimp'&&t.files[0]){const f=t.files[0];t.value='';importLook(f)}});
   P.addEventListener('click',e=>{const id=e.target.id;
@@ -652,7 +662,7 @@ function ui(){
 function meters(){for(const i of document.querySelectorAll('#stmeters i'))i.style.width=Math.round(clamp(S[i.dataset.s])*100)+'%'}
 build();
 return{resize,frame,toggle,set,heard:voice,react,quickSave,feedback,get on(){return on},
-  dbg:()=>({on,shown,gl:!!gl,glError:gl?gl.getError():-1,W,H,hasDraw,drawAspect,cur:clone(cur),looks:looks.length,undo:undo.length,evolve,beats,S:{...S},notes:notes.length}),ACID};
+  dbg:()=>({video:!!videoEl,on,shown,gl:!!gl,glError:gl?gl.getError():-1,W,H,hasDraw,drawAspect,cur:clone(cur),looks:looks.length,undo:undo.length,evolve,beats,S:{...S},notes:notes.length}),ACID};
 })();
 </script>
 </body>
