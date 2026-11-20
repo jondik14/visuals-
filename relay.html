@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visuals audio link</title>
+<style>
+:root{--bg:#0c0c10;--ink:#f1f0ec;--muted:#9a99a6;--accent:#ff3d7f}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;box-sizing:border-box;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:400px}h1{font-size:22px;margin:0 0 8px}p{color:var(--muted);line-height:1.5;margin:8px 0}#s{color:var(--ink)}
+button{font:inherit;font-weight:700;font-size:16px;padding:14px 18px;border-radius:12px;border:0;background:var(--accent);color:#0c0c10;width:100%;cursor:pointer;margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+<h1>Audio link</h1>
+<p>This window shares your music tab and passes the sound to the visuals, so the visuals tab has no "sharing" bar in full screen.</p>
+<button id="go">Share the music tab</button>
+<p id="s">Pick the YouTube or Spotify tab and turn on "Also share tab audio".</p>
+</main>
+<script>
+// Audio thread: mixes the shared tab to mono and sends ~20 ms blocks straight to the visuals tab's audio thread.
+const W=`class S extends AudioWorkletProcessor{constructor(){super();this.q=[];this.n=0;this.port.onmessage=e=>{if(e.data&&e.data.port)this.p=e.data.port}}
+process(i){const c=i[0];if(this.p&&c&&c.length){const a=c[0],b=c[1],m=new Float32Array(a.length);for(let k=0;k<a.length;k++)m[k]=b?(a[k]+b[k])*.5:a[k];
+this.q.push(m);this.n+=m.length;if(this.n>=1024){const o=new Float32Array(this.n);let j=0;for(const x of this.q){o.set(x,j);j+=x.length}this.p.postMessage(o,[o.buffer]);this.q=[];this.n=0}}return true}}
+registerProcessor('relay-out',S)`;
+const sr=+new URLSearchParams(location.search).get('sr')||0,s=document.getElementById('s'),go=document.getElementById('go');
+let ctx,node,stream,loaded=false;
+go.onclick=async()=>{
+  if(!window.opener){s.textContent='Open this from the visuals page (the 📺 button).';return}
+  try{ctx=ctx||new AudioContext(sr?{sampleRate:sr}:{});await ctx.resume();
+    stream=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'browser'},audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,suppressLocalAudioPlayback:false},selfBrowserSurface:'exclude'});
+  }catch(e){s.textContent=e.name==='NotAllowedError'?'Sharing was cancelled. Try again.':'Couldn\'t share ('+e.name+'). Use Chrome or Edge on a computer.';return}
+  if(!stream.getAudioTracks().length){stream.getTracks().forEach(t=>t.stop());s.textContent='No sound came through. Pick a browser tab (not a window) and turn on "Also share tab audio".';return}
+  stream.getVideoTracks().forEach(t=>t.stop());
+  if(!loaded){await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([W],{type:'text/javascript'})));loaded=true}
+  if(node)node.disconnect();node=new AudioWorkletNode(ctx,'relay-out');
+  const mute=ctx.createGain();mute.gain.value=0;ctx.createMediaStreamSource(stream).connect(node);node.connect(mute).connect(ctx.destination);
+  stream.getAudioTracks()[0].onended=()=>{s.textContent='Sharing stopped. Click to share again.';go.textContent='Share the music tab'};
+  window.opener.postMessage({type:'relay-ready'},location.origin);
+  go.textContent='Share a different tab';s.textContent='✅ Connected. Go back to the visuals and press F. Keep this window open; you can put it behind the others.';
+};
+addEventListener('message',e=>{if(e.origin!==location.origin||!e.data||e.data.type!=='relay-port'||!node)return;node.port.postMessage({port:e.data.port},[e.data.port])});
+</script>
+</body>
+</html>
