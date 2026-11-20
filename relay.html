@@ -14,7 +14,7 @@ button{font:inherit;font-weight:700;font-size:16px;padding:14px 18px;border-radi
 <body>
 <main>
 <h1>Audio link</h1>
-<p>This window shares your music tab and passes the sound to the visuals, so the visuals tab has no "sharing" bar in full screen.</p>
+<p>This tab shares your music tab and passes the sound to the visuals, so the visuals tab has no "sharing" bar in full screen.</p>
 <button id="go">Share the music tab</button>
 <p id="s">Pick the YouTube or Spotify tab and turn on "Also share tab audio".</p>
 </main>
@@ -38,7 +38,7 @@ go.onclick=async()=>{
   const mute=ctx.createGain();mute.gain.value=0;ctx.createMediaStreamSource(stream).connect(node);node.connect(mute).connect(ctx.destination);
   stream.getAudioTracks()[0].onended=()=>{s.textContent='Sharing stopped. Click to share again.';go.textContent='Share the music tab'};
   window.opener.postMessage({type:'relay-ready'},location.origin);
-  go.textContent='Share a different tab';s.textContent='✅ Connected. Go back to the visuals and press F. Keep this window open; you can put it behind the others.';
+  go.textContent='Share a different tab';s.textContent='✅ Connected. Go back to the visuals tab and press F. Keep this tab open.';
 };
 addEventListener('message',e=>{if(e.origin!==location.origin||!e.data||e.data.type!=='relay-port'||!node)return;node.port.postMessage({port:e.data.port},[e.data.port])});
 </script>

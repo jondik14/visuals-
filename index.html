@@ -68,7 +68,7 @@ kbd{border:1px solid #444;border-bottom-width:2px;border-radius:4px;padding:0 5p
   <p>Visuals that move to the music, for the projector. Pick how this laptop should hear the music:</p>
   <button class="primary" id="mic">🎤 Microphone<small>Easiest. Point the laptop at the speakers. Works on any laptop.</small></button>
   <select id="indev" aria-label="Which microphone or audio input"></select>
-  <button id="yt">📺 YouTube / Spotify tab, clean full screen<small>Opens a small helper window that shares the music tab, so this tab shows no "sharing" bar. Chrome or Edge.</small></button>
+  <button id="yt">📺 YouTube / Spotify tab, clean full screen<small>Opens a helper tab that shares the music tab, so this tab shows no "sharing" bar. Chrome or Edge.</small></button>
   <button id="sys">🎧 Spotify / browser tab audio<small id="syshint">Most accurate. Play the music in a Chrome or Edge <b>tab</b> (e.g. open.spotify.com), pick that tab and turn on "Also share tab audio". App windows can't share sound. On Windows, "Entire screen" + "Share system audio" works with any app (Spotify app, rekordbox).</small></button>
   <label class="btn" for="file">🎵 Play an audio file<small>Test it with one of the practice-pack tracks.</small></label>
   <input type="file" id="file" accept="audio/*" hidden>
@@ -386,9 +386,9 @@ process(i,o){const out=o[0][0],b=this.b,L=b.length;if(this.n<out.length){out.fil
 registerProcessor('relay-in',R)`;
 let relayWin=null,relayNode=null,relayLoaded=false;
 $('yt').onclick=()=>{unlockAudio();err.textContent='';
-  relayWin=window.open('relay.html?sr='+ctx.sampleRate,'decksRelay','popup,width=480,height=380');
+  relayWin=window.open('relay.html?sr='+ctx.sampleRate,'decksRelay'); // a normal tab, so Chrome's sharing bar stays in that tab
   if(!relayWin)err.textContent='Your browser blocked the helper window. Allow pop-ups for this site (icon at the right of the address bar) and try again.';
-  else err.textContent='In the helper window, click "Share the music tab".'};
+  else err.textContent='In the helper tab, click "Share the music tab", then come back to this tab.'};
 addEventListener('message',async e=>{if(e.origin!==location.origin||!e.data||e.data.type!=='relay-ready'||!relayWin||e.source!==relayWin)return;
   try{if(!viz&&!init())return;
     if(!relayLoaded){await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([RELAY_IN],{type:'text/javascript'})));relayLoaded=true}
