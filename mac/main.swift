@@ -58,7 +58,7 @@ final class SystemAudio: NSObject, SCStreamOutput, SCStreamDelegate {
 
     func stream(_ stream: SCStream, didStopWithError error: Error) {
         self.stream = nil
-        let msg = "Stopped listening to this Mac (\(error.localizedDescription)). Click 'This Mac's sound' to start again."
+        let msg = "Stopped listening to this Mac (\(error.localizedDescription)). Click 'This computer's sound' to start again."
         DispatchQueue.main.async { App.shared?.callPage("__decksNativeError", msg) }
     }
 

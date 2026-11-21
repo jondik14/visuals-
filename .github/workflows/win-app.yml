@@ -1,0 +1,38 @@
+name: Windows app
+
+on:
+  push:
+    branches: [main]
+    paths: ['win/**', 'index.html', 'relay.html', '.github/workflows/win-app.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Build Decks Visuals for Windows
+        shell: pwsh
+        run: |
+          dotnet publish win/DecksVisuals.csproj -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o build/DecksVisuals
+          New-Item -ItemType Directory -Force build/DecksVisuals/site | Out-Null
+          Copy-Item index.html, relay.html build/DecksVisuals/site/
+          Get-ChildItem build/DecksVisuals
+          Compress-Archive -Path build/DecksVisuals -DestinationPath build/DecksVisuals-windows.zip -Force
+      - name: Publish the download
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete win-latest --yes --cleanup-tag || true
+          gh release create win-latest build/DecksVisuals-windows.zip \
+            --title "Decks Visuals for Windows (latest)" \
+            --notes "Download DecksVisuals-windows.zip, unzip it and run DecksVisuals.exe. If Windows shows 'Windows protected your PC', click More info, then Run anyway." \
+            --target "$GITHUB_SHA" --latest=false
