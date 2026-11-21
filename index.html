@@ -210,7 +210,7 @@ function init(){unlockAudio();
   inGain=ctx.createGain();agc=ctx.createGain();agc.gain.value=4;
   analyser=ctx.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=0;
   inGain.connect(agc);inGain.connect(analyser);
-  size();const q=QUAL[qi];viz=BC.createVisualizer(ctx,canvas,{width:canvas.width,height:canvas.height,pixelRatio:1,meshWidth:q.mw,meshHeight:q.mh,textureRatio:q.tex,outputFXAA:q.aa});viz.connectAudio(agc);
+  size();const q=QUAL[qi];viz=BC.createVisualizer(ctx,canvas,{width:canvas.width,height:canvas.height,pixelRatio:1,meshWidth:q.mw,meshHeight:q.mh,textureRatio:q.tex,outputFXAA:q.aa});const bassBoost=ctx.createBiquadFilter();bassBoost.type='lowshelf';bassBoost.frequency.value=160;bassBoost.gain.value=10;agc.connect(bassBoost);viz.connectAudio(bassBoost); // looks react harder to bass
   presets={};for(const g of ['butterchurnPresets','butterchurnPresetsExtra','butterchurnPresetsExtra2','butterchurnPresetsMD1']){const m=window[g];if(m)try{Object.assign(presets,(m.default||m).getPresets())}catch(e){}}
   let bin=[];try{bin=JSON.parse(localStorage.getItem('vizBin')||'[]')}catch(e){}
   for(const n of Object.keys(presets))if(scores[n]===undefined&&SEED.authors.some(a=>n.startsWith(a+' - ')))scores[n]=1;
@@ -321,10 +321,10 @@ function drawFx(){
   // kick pulse: zoom + brightness on the visual canvas
   // bass → size + brightness · mids → spin + contrast · treble → hue speed · centroid → saturation · kick → punch
   const sec=SECTION[section],P=gains.punch*sec.punch,kl=[0,0.5,1,1.6][kickLvl];
-  const z=Math.min(0.12,0.04*kl*pulse*P+E.low*0.03*P);
+  const z=Math.min(0.24,0.085*kl*pulse*P+E.low*0.035*P); // bass pushes the zoom pulse
   const coverScale=1+Math.abs(rot)*0.012; // hides the corners when rotated
   FXS.scale=(1+z)*coverScale;FXS.rot=rot;if(!FXS.studio)canvas.style.transform=`scale(${(1+z)*coverScale}) rotate(${rot.toFixed(2)}deg)`;
-  const bright=Math.min(1.45,sec.bright*(0.9+E.low*0.18*P+pulse*0.18*kl*P)*(1+0.12*buildP));
+  const bright=Math.min(1.6,sec.bright*(0.88+E.low*0.32*P+pulse*0.22*kl*P)*(1+0.12*buildP));
   const sat=Math.max(0.2,Math.min(1.8,sec.sat*(0.85+cent*0.4*gains.colour+pulse*0.15)));
   FXS.hue=hue%360;FXS.sat=sat;FXS.bright=bright;FXS.con=1+E.mid*0.2;if(!FXS.studio)canvas.style.filter=`hue-rotate(${(hue%360).toFixed(1)}deg) saturate(${sat.toFixed(2)}) brightness(${bright.toFixed(2)}) contrast(${(1+E.mid*0.2).toFixed(2)})`;
   // rings
