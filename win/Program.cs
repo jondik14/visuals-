@@ -17,8 +17,24 @@ namespace DecksVisuals
         [STAThread]
         static void Main()
         {
-            ApplicationConfiguration.Initialize();
-            Application.Run(new MainForm());
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (s, e) => Crash(e.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => Crash(e.ExceptionObject as Exception);
+            try
+            {
+                ApplicationConfiguration.Initialize();
+                Application.Run(new MainForm());
+            }
+            catch (Exception ex) { Crash(ex); }
+        }
+
+        // Show why it failed and keep a copy on the Desktop, so the problem can be fixed.
+        static void Crash(Exception ex)
+        {
+            var text = "Decks Visuals hit a problem and has to close.\n\n" + ex;
+            try { File.WriteAllText(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "DecksVisuals-error.txt"), text); } catch { }
+            try { MessageBox.Show(text.Length > 1500 ? text.Substring(0, 1500) + "…\n\n(Full details: DecksVisuals-error.txt on your Desktop)" : text, "Decks Visuals"); } catch { }
+            Environment.Exit(1);
         }
     }
 
